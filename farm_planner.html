@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌾 王者农场智能规划器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=ZCOOL+KuaiLe&display=swap');
+  :root {
+    --bg:#0f1a0a;--bg2:#1a2c12;--card:#1e3316;--border:#3a5c2a;
+    --gold:#f0c040;--green:#5cb840;--text:#e8e4d8;--text2:#b0a890;
+    --xp:#60c0ff;--coin:#ffd740;--danger:#ff6b6b;--sleep:#9b59b6;--online:#3498db;
+    --radius:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Serif SC',serif;background:var(--bg);color:var(--text);min-height:100vh}
+  body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+    background:radial-gradient(ellipse at 20% 20%,rgba(92,184,64,.08) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 80%,rgba(240,192,64,.06) 0%,transparent 50%);z-index:-1}
+  .container{max-width:900px;margin:0 auto;padding:16px 12px 50px}
+  .header{text-align:center;padding:24px 0 16px}
+  .header h1{font-family:'ZCOOL KuaiLe',cursive;font-size:1.85rem;color:var(--gold);letter-spacing:2px;margin-bottom:4px}
+  .header .sub{color:var(--text2);font-size:.82rem}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;animation:up .4s ease both}
+  @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .card-title{font-family:'ZCOOL KuaiLe',cursive;font-size:1rem;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .card-title::before{content:'';width:3px;height:14px;background:var(--gold);border-radius:2px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+  .grp{display:flex;flex-direction:column;gap:2px}
+  .grp label{font-size:.7rem;color:var(--text2)}
+  .grp label b{color:var(--gold)}
+  .grp input,.grp select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:.85rem;outline:none;width:100%}
+  .grp input:focus{border-color:var(--gold)}
+  .grp .tip{font-size:.62rem;color:var(--green);margin-top:1px}
+
+  .sec{border-radius:6px;padding:10px 12px;margin-top:8px}
+  .sec.sleep{background:rgba(155,89,182,.06);border:1px solid rgba(155,89,182,.2)}
+  .sec.online{background:rgba(52,152,219,.06);border:1px solid rgba(52,152,219,.2)}
+  .sec .stitle{font-size:.76rem;margin-bottom:6px;font-weight:700}
+  .sec.sleep .stitle{color:var(--sleep)}
+  .sec.online .stitle{color:var(--online)}
+
+  .btn{font-family:'ZCOOL KuaiLe',cursive;font-size:.95rem;padding:9px 24px;border:none;border-radius:6px;cursor:pointer;background:linear-gradient(135deg,#d4a820,var(--gold));color:#1a1a0a}
+
+  .results{display:none}.results.show{display:block;animation:up .35s ease}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:7px;margin-bottom:12px}
+  .stat{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center}
+  .stat .si{font-size:1.1rem}
+  .stat .sv{font-family:'ZCOOL KuaiLe',cursive;font-size:1.15rem;color:var(--gold)}
+  .stat .sn{font-size:.65rem;color:var(--text2)}
+
+  /* 最佳上线时间 */
+  .online-card{background:linear-gradient(135deg,rgba(52,152,219,.08),rgba(92,184,64,.08));border:1px solid var(--online);border-radius:8px;padding:12px;margin-bottom:10px}
+  .online-card h4{font-family:'ZCOOL KuaiLe',cursive;color:var(--online);margin-bottom:8px;font-size:.88rem}
+  .online-times{display:flex;gap:6px;flex-wrap:wrap}
+  .online-times .ot{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 10px;text-align:center;min-width:75px}
+  .online-times .ot .tm{font-size:1rem;font-weight:700;color:var(--gold)}
+  .online-times .ot .act{font-size:.65rem;color:var(--text2)}
+
+  /* 睡前清单 */
+  .check-card{background:rgba(155,89,182,.06);border:1px solid rgba(155,89,182,.25);border-radius:7px;padding:10px;margin-bottom:10px}
+  .check-card h4{font-family:'ZCOOL KuaiLe',cursive;color:var(--sleep);margin-bottom:6px;font-size:.82rem}
+  .check-card ul{list-style:none;font-size:.78rem}
+  .check-card li{padding:4px 0;display:flex;align-items:center;gap:6px}
+  .check-card li::before{content:'☐';color:var(--gold)}
+
+  .crop-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.72rem}
+  .crop-table thead th{background:var(--bg2);color:var(--text2);padding:5px 3px;text-align:center;font-size:.65rem;border-bottom:1px solid var(--border)}
+  .crop-table tbody tr:hover{background:rgba(92,184,64,.06)}
+  .crop-table td{padding:4px 2px;text-align:center;border-bottom:1px solid rgba(58,92,42,.35)}
+  .crop-table td:first-child{text-align:left;font-weight:700}
+  .tag{display:inline-block;padding:1px 4px;border-radius:3px;font-size:.6rem;font-weight:700}
+  .tag-coin{background:rgba(255,215,64,.1);color:var(--coin)}
+  .tag-xp{background:rgba(96,192,255,.1);color:var(--xp)}
+
+  .weekend{background:linear-gradient(135deg,rgba(240,192,64,.08),rgba(92,184,64,.08));border:1px solid var(--gold);border-radius:7px;padding:10px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:.8rem}
+  .weekend b{color:var(--gold)}
+
+  .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-70px);background:var(--card);border:1px solid var(--border);padding:8px 16px;border-radius:6px;font-size:.78rem;z-index:999;transition:transform .3s ease}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <h1>🌾 农场智能规划器</h1>
+    <div class="sub">王者荣耀 S43 · 最佳上线时间 · 睡前清单</div>
+  </header>
+
+  <div class="card">
+    <div class="card-title">📋 你的数据</div>
+    <div class="grid">
+      <div class="grp"><label>农场 <b>等级</b></label><input type="number" id="lv" value="18" min="1"></div>
+      <div class="grp"><label>当前 <b>田地</b></label><input type="number" id="plots" value="9" min="1"><div class="tip">上限=等级÷2取整</div></div>
+      <div class="grp"><label>当前 <b>经验</b></label><input type="number" id="xp" value="0" min="0"></div>
+      <div class="grp"><label>升下一级需 <b>总经验</b></label><input type="number" id="xpNext" value="500" min="1"></div>
+      <div class="grp"><label>手上 <b>农场币</b></label><input type="number" id="coins" value="0" min="0"></div>
+      <div class="grp"><label>目标攒币 <b>数量</b>（0不限）</label><input type="number" id="target" value="0" min="0"></div>
+    </div>
+
+    <div class="sec sleep">
+      <div class="stitle">🌙 作息（无法操作）</div>
+      <div class="grid" style="grid-template-columns:1fr auto 1fr">
+        <div class="grp"><label>睡觉 <b>开始</b></label><input type="time" id="sStart" value="02:00"></div>
+        <div style="display:flex;align-items:end;padding-bottom:3px;color:var(--text2)">→</div>
+        <div class="grp"><label>起床 <b>结束</b></label><input type="time" id="sEnd" value="09:00"></div>
+      </div>
+    </div>
+
+    <div class="sec online">
+      <div class="stitle">⏰ 你每天什么时间能上线？</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem">
+        <label><input type="checkbox" id="o1" checked> 早起（6-9点）</label>
+        <label><input type="checkbox" id="o2" checked> 中午（12-14点）</label>
+        <label><input type="checkbox" id="o3" checked> 晚上（18-22点）</label>
+        <label><input type="checkbox" id="o4"> 睡前（22-2点）</label>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center;margin-top:12px">
+      <button class="btn" onclick="calc()">🌾 开始规划</button>
+    </div>
+  </div>
+
+  <div id="results" class="results">
+    <div id="weekend" class="weekend"></div>
+    <div id="stats" class="stats"></div>
+    <div id="onlineCard" class="online-card" style="display:none">
+      <h4>⏰ 今日最佳上线时间</h4>
+      <div class="online-times" id="onlineTimes"></div>
+    </div>
+    <div id="checkCard" class="check-card" style="display:none">
+      <h4>🌙 睡前操作清单</h4>
+      <ul id="checklist"></ul>
+    </div>
+    <div class="card"><div class="card-title">📋 作物对比</div><div style="overflow-x:auto"><table id="crops" class="crop-table"></table></div></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const CROPS=[
+  {n:"白菜",lv:1,m:4,t:"xp",b:300,x:50},
+  {n:"胡萝卜",lv:2,m:4,t:"xp",b:450,x:70},
+  {n:"土豆",lv:4,m:4,t:"xp",b:680,x:100},
+  {n:"萝卜",lv:6,m:4,t:"xp",b:950,x:140},
+  {n:"西红柿",lv:8,m:8,t:"xp",b:1800,x:220},
+  {n:"茄子",lv:10,m:8,t:"xp",b:2400,x:300},
+  {n:"辣椒",lv:12,m:8,t:"xp",b:3200,x:400},
+  {n:"南瓜",lv:14,m:16,t:"xp",b:4500,x:550},
+  {n:"大蒜",lv:18,m:16,t:"xp",b:6030,x:700},
+  {n:"香蕉",lv:18,m:16,t:"coin",b:19320,x:1},
+  {n:"小麦",lv:19,m:4,t:"xp",b:1200,x:180},
+  {n:"玉米",lv:20,m:8,t:"xp",b:4000,x:450},
+  {n:"花生",lv:21,m:8,t:"xp",b:5500,x:500},
+  {n:"黄瓜",lv:22,m:1,t:"coin",b:3500,x:1},
+  {n:"草莓",lv:23,m:4,t:"coin",b:2800,x:10},
+  {n:"蓝莓",lv:25,m:4,t:"coin",b:3800,x:10},
+  {n:"西瓜",lv:26,m:8,t:"coin",b:8500,x:5},
+  {n:"芒果",lv:28,m:8,t:"coin",b:11000,x:5},
+  {n:"柚子",lv:30,m:16,t:"coin",b:28000,x:5},
+  {n:"火龙果",lv:32,m:16,t:"coin",b:38000,x:5},
+  {n:"葡萄",lv:34,m:8,t:"xp",b:16000,x:1200},
+  {n:"榴莲",lv:38,m:16,t:"coin",b:55000,x:5},
+  {n:"樱桃",lv:42,m:16,t:"coin",b:75000,x:5},
+];
+
+function fmt(n){return n.toLocaleString('zh-CN')}
+function pt(s){const[h,m]=s.split(':').map(Number);return h+m/60}
+function p2(h){return`${String(Math.floor(h%24)).padStart(2,'0')}:${String(Math.round(h%1*60)).padStart(2,'0')}`}
+function isSlp(h,ss,se){return ss<=se?(h>=ss&&h<se):(h>=ss||h<se)}
+function bonus(lv){return lv<11?Math.round(lv*50/11):50+(lv-11)*5}
+
+function emat(base,ss,se){
+  const awake=ss<=se?24-(se-ss):ss-se;
+  const ratio=awake/24;
+  const wt=ratio>=.85?2:Math.max(1,Math.round(2*ratio));
+  let r=base;for(let i=0;i<wt;i++)r*=(1-15/100);
+  return{em:Math.round(r*100)/100,ew:wt,mw:2-wt};
+}
+
+function sched(base,ss,se){
+  const{em,ew,mw}=emat(base,ss,se);
+  const hs=[];for(let i=0;i<30;i++)hs.push(i*em%24);
+  hs.sort((a,b)=>a-b);
+  const marked=hs.map(t=>({t,sl:isSlp(t,ss,se)}));
+  return{em,ew,mw,hs:marked,valid:Math.max(1,marked.filter(h=>!h.sl).length)};
+}
+
+function wk(){
+  const now=new Date(),d=now.getDay();
+  let f=new Date(now);const df=(5-d+7)%7;
+  f.setDate(now.getDate()+(df===0&&now.getHours()>=16?7:df));f.setHours(16,0,0,0);
+  const s=new Date(f);s.setDate(f.getDate()+2);
+  return{f,s,is:now>=f&&now<=s,days:Math.ceil((f-now)/86400000)};
+}
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function fd(d){return`${d.getMonth()+1}/${d.getDate()}`}
+
+// 最佳上线时间计算
+function bestTimes(avail,ss,se){
+  const times=[];
+  // 早中晚四个窗口
+  if(document.getElementById('o1').checked)times.push({s:6,e:9,l:'早'});
+  if(document.getElementById('o2').checked)times.push({s:12,e:14,l:'中'});
+  if(document.getElementById('o3').checked)times.push({s:18,e:22,l:'晚'});
+  if(document.getElementById('o4').checked)times.push({s:22,e:26,l:'睡前'});
+  
+  // 对于每个窗口，找出最佳上线时间（推荐在窗口开始时上线）
+  const result=[];
+  for(const w of times){
+    const start=w.s%24;
+    // 推荐在该时间窗口开始时上线
+    result.push({t:start,label:w.l,act:'浇水+收菜'});
+  }
+  return result;
+}
+
+// 睡前清单
+function sleepCheck(avail,ss,se,lv,plots,stallLv,bonus){
+  const list=[];
+  list.push(`给所有作物浇水（睡觉前最后一次操作）`);
+  list.push(`检查：小摊当前 Lv.${stallLv} 加成 +${bonus}%`);
+  list.push(`去好友农场偷菜，优先偷香蕉/柚子`);
+  // 找出会在睡觉期间成熟的作物
+  const wake=se;
+  const sleepDur=ss<=se?se-ss:24-se+ss;
+  for(const c of avail){
+    const nextHarvest=c.sched.hs.filter(h=>h.sl).length;
+    if(nextHarvest>0){
+      list.push(`⚠️ ${c.n} 会在睡觉期间成熟，睡前务必收！`);
+    }
+  }
+  list.push(`安排好明天起床后先种什么`);
+  return list;
+}
+
+function calc(){
+  const lv=+document.getElementById('lv').value||18;
+  const plots=+document.getElementById('plots').value||9;
+  const xp=+document.getElementById('xp').value||0;
+  const xpNext=+document.getElementById('xpNext').value||500;
+  const coins=+document.getElementById('coins').value||0;
+  const target=+document.getElementById('target').value||0;
+  const ss=pt(document.getElementById('sStart').value||'02:00');
+  const se=pt(document.getElementById('sEnd').value||'09:00');
+
+  const bonus=bonus(lv);
+  const mult=1+bonus/100;
+  const maxPlots=Math.floor(lv/2);
+
+  // 处理作物
+  const avail=CROPS.filter(c=>c.lv<=lv).map(c=>{
+    const s=sched(c.m,ss,se);
+    const price=Math.round(c.b*mult);
+    return{...c,price,s,em:s.em,ew:s.ew,mw:s.mw,hc:price/s.em,hx:c.x/s.em,cl:s.valid};
+  });
+
+  const coinC=avail.filter(c=>c.t==='coin');
+  const bestCoin=coinC.length?coinC.reduce((a,b)=>a.hc>b.hc?a:b):null;
+
+  let tdc=5000,tdx=300; // 对局任务
+  if(bestCoin){
+    tdc+=bestCoin.price*plots*bestCoin.cl;
+    tdx+=bestCoin.x*plots*bestCoin.cl;
+  }
+
+  const needXp=Math.max(0,xpNext-xp);
+  const daysLv=tdx>0?Math.ceil(needXp/tdx):0;
+  const remCoins=Math.max(0,target-coins);
+  const daysTarget=tdc>0?Math.ceil(remCoins/(tdc*9/7)):0;
+
+  // 最佳上线时间
+  const times=bestTimes(avail,ss,se);
+  
+  // 睡前清单
+  const checks=sleepCheck(avail,ss,se,lv,plots,lv,bonus);
+
+  const w=wk();
+  document.getElementById('weekend').innerHTML=w.is?`<span style="font-size:1.4rem">🔥</span><span><b>周末双倍进行中</b> ${fd(w.f)} 16:00 ~ ${fd(w.s)} 00:00</span>`:`<span style="font-size:1.4rem">⏳</span><span>距周末双倍 <b>${w.days}</b> 天</span>`;
+  document.getElementById('stats').innerHTML=`<div class="stat"><div class="si">💰</div><div class="sv">${fmt(tdc)}</div><div class="sn">日收益</div></div><div class="stat"><div class="si">📈</div><div class="sv">${fmt(tdx)}</div><div class="sn">日经验</div></div><div class="stat"><div class="si">🏗️</div><div class="sv">${plots}/${maxPlots}</div><div class="sn">田地</div></div><div class="stat"><div class="si">🏪</div><div class="sv">+${bonus}%</div><div class="sn">加成</div></div><div class="stat"><div class="si">${daysLv>0?'⬆️':'✅'}</div><div class="sv">${daysLv>0?daysLv+'天':'-'}</div><div class="sn">升级</div></div><div class="stat"><div class="si">🎉</div><div class="sv">${w.is?'🔥':w.days+'天'}</div><div class="sn">双倍</div></div>`;
+  
+  // 最佳上线时间卡片
+  const oc=document.getElementById('onlineCard');
+  const ot=document.getElementById('onlineTimes');
+  if(times.length>0){
+    oc.style.display='block';
+    ot.innerHTML=times.map(t=>`<div class="ot"><div class="tm">${p2(t.t)}</div><div class="act">${t.label}</div></div>`).join('');
+  }else{
+    oc.style.display='none';
+  }
+  
+  // 睡前清单卡片
+  const cc=document.getElementById('checkCard');
+  const cl=document.getElementById('checklist');
+  if(checks.length>0){
+    cc.style.display='block';
+    cl.innerHTML=checks.map(c=>`<li>${c}</li>`).join('');
+  }else{
+    cc.style.display='none';
+  }
+
+  // 作物表
+  const sorted=[...avail].sort((a,b)=>a.t!==b.t?a.t==='coin'?-1:1:b.hc-a.hc);
+  let h='<thead><tr><th>作物</th><th>类型</th><th>等级</th><th>基础</th><th>实际</th><th>浇水</th><th>售价</th><th>时薪</th><th>日轮</th></tr></thead><tbody>';
+  for(const c of sorted){
+    const tag=c.t==='coin'?'<span class="tag tag-coin">金币</span>':'<span class="tag tag-xp">经验</span>';
+    h+=`<tr><td>${c.n}</td><td>${tag}</td><td>${c.lv}</td><td>${c.m}h</td><td>${c.em}h</td><td>${c.ew}/2</td><td style="color:var(--coin)">${fmt(c.price)}</td><td style="color:var(--gold)">${fmt(Math.round(c.hc))}</td><td>${c.cl}</td></tr>`;
+  }
+  h+='</tbody>';
+  document.getElementById('crops').innerHTML=h;
+
+  document.getElementById('results').classList.add('show');
+  setTimeout(()=>document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'}),60);
+  toast('🌾 规划完成！');
+}
+
+['sStart','sEnd','o1','o2','o3','o4'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('change',calc);
+});
+
+window.addEventListener('DOMContentLoaded',calc);
+</script>
+</body>
+</html>

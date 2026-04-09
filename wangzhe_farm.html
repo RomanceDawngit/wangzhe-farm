@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌾 王者荣耀 S43 农场智能规划器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=ZCOOL+KuaiLe&display=swap');
+  :root {
+    --bg:#0f1a0a;--bg2:#1a2c12;--card:#1e3316;--card2:#253d1c;--border:#3a5c2a;
+    --gold:#f0c040;--gold2:#d4a820;--green:#5cb840;--green2:#3d8c28;
+    --text:#e8e4d8;--text2:#b0a890;--xp-color:#60c0ff;--coin-color:#ffd740;
+    --danger:#ff6b6b;--sleep-color:#9b59b6;--stall-color:#e67e22;--invest-color:#27ae60;--radius:12px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Serif SC',serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+    background:radial-gradient(ellipse at 20% 20%,rgba(92,184,64,.08) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 80%,rgba(240,192,64,.06) 0%,transparent 50%),
+    radial-gradient(ellipse at 50% 50%,rgba(30,51,22,.5) 0%,transparent 70%);z-index:-1;
+    animation:bgFloat 20s ease-in-out infinite alternate}
+  @keyframes bgFloat{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(-20px,-20px) rotate(2deg)}}
+  .container{max-width:1020px;margin:0 auto;padding:20px 16px 60px}
+
+  .header{text-align:center;padding:30px 0 20px}
+  .header h1{font-family:'ZCOOL KuaiLe',cursive;font-size:2rem;color:var(--gold);text-shadow:0 2px 20px rgba(240,192,64,.3);letter-spacing:3px;margin-bottom:5px}
+  .header .subtitle{color:var(--text2);font-size:.88rem;letter-spacing:1.5px}
+  .header .divider{width:120px;height:2px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);margin:12px auto 0}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;animation:fadeUp .5s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .card-title{font-family:'ZCOOL KuaiLe',cursive;font-size:1.1rem;color:var(--green);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card-title::before{content:'';width:4px;height:18px;background:var(--gold);border-radius:2px}
+
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+  .form-group{display:flex;flex-direction:column;gap:3px}
+  .form-group label{font-size:.75rem;color:var(--text2);letter-spacing:.4px}
+  .form-group label span{color:var(--gold);font-weight:700}
+  .form-group input,.form-group select{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Noto Serif SC',serif;font-size:.9rem;transition:border-color .3s,box-shadow .3s;outline:none;width:100%}
+  .form-group input:focus,.form-group select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,192,64,.12)}
+  .form-group input::placeholder{color:var(--text2);opacity:.5}
+  .form-group select option{background:var(--bg2)}
+  .form-group .hint{font-size:.68rem;color:var(--green);margin-top:1px}
+
+  .section{border-radius:8px;padding:12px 14px;margin-top:10px}
+  .section.water{background:rgba(96,192,255,.05);border:1px solid rgba(96,192,255,.2)}
+  .section.sleep{background:rgba(155,89,182,.05);border:1px solid rgba(155,89,182,.2)}
+  .section.stall{background:rgba(230,126,34,.05);border:1px solid rgba(230,126,34,.2)}
+  .section.exp{background:rgba(39,174,96,.05);border:1px solid rgba(39,174,96,.2)}
+  .section .sec-title{font-size:.8rem;margin-bottom:8px;font-weight:700}
+  .section.water .sec-title{color:var(--xp-color)}
+  .section.sleep .sec-title{color:var(--sleep-color)}
+  .section.stall .sec-title{color:var(--stall-color)}
+  .section.exp .sec-title{color:var(--invest-color)}
+
+  .btn{font-family:'ZCOOL KuaiLe',cursive;font-size:1rem;padding:10px 28px;border:none;border-radius:8px;cursor:pointer;transition:all .3s;letter-spacing:2px}
+  .btn-gold{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1a1a0a;box-shadow:0 4px 14px rgba(240,192,64,.3)}
+  .btn-gold:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(240,192,64,.4)}
+
+  .results{display:none}.results.show{display:block;animation:fadeUp .4s ease}
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin-bottom:16px}
+  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px;text-align:center;transition:transform .3s}
+  .stat-card:hover{transform:translateY(-2px)}
+  .stat-card .stat-icon{font-size:1.25rem;margin-bottom:2px}
+  .stat-card .stat-value{font-family:'ZCOOL KuaiLe',cursive;font-size:1.3rem;color:var(--gold)}
+  .stat-card .stat-label{font-size:.7rem;color:var(--text2);margin-top:1px}
+
+  .mix-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  .mix-card{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:14px}
+  .mix-card .mc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .mix-card .mc-crop{font-weight:700;font-size:.92rem}
+  .mix-card .mc-tag{font-size:.7rem;padding:2px 6px;border-radius:4px}
+  .mix-card .mc-tag.coin{background:rgba(255,215,64,.15);color:var(--coin-color)}
+  .mix-card .mc-tag.xp{background:rgba(96,192,255,.15);color:var(--xp-color)}
+  .mix-detail{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(58,92,42,.3);font-size:.82rem}
+  .mix-detail:last-child{border-bottom:none}
+  .mix-detail .label{color:var(--text2)}
+  .mix-detail .value{font-weight:700}
+  .mix-detail .value.coin{color:var(--coin-color)}
+  .mix-detail .value.xp{color:var(--xp-color)}
+  .mix-detail .value.warn{color:var(--danger)}
+  .mix-detail .value.stall{color:var(--stall-color)}
+
+  .invest-card{background:linear-gradient(135deg,rgba(39,174,96,.06),rgba(230,126,34,.06));border:1px solid var(--invest-color);border-radius:10px;padding:16px;margin-bottom:14px}
+  .invest-card h4{font-family:'ZCOOL KuaiLe',cursive;color:var(--invest-color);margin-bottom:12px;font-size:.95rem}
+  .invest-option{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px}
+  .invest-option h5{font-size:.85rem;margin-bottom:8px}
+  .invest-detail{display:flex;justify-content:space-between;padding:3px 0;font-size:.8rem}
+  .invest-detail .label{color:var(--text2)}
+  .invest-detail .value{font-weight:700}
+  .invest-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:6px}
+  .invest-badge.good{background:rgba(92,184,64,.2);color:var(--green)}
+  .invest-badge.ok{background:rgba(240,192,64,.2);color:var(--gold)}
+  .invest-badge.slow{background:rgba(255,107,107,.15);color:var(--danger)}
+
+  .timeline{padding:4px 0}
+  .timeline-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(58,92,42,.3);font-size:.85rem}
+  .timeline-item:last-child{border-bottom:none}
+  .timeline-item .tl-icon{font-size:1rem;flex-shrink:0;width:24px;text-align:center}
+  .timeline-item .tl-content{flex:1}
+  .timeline-item .tl-time{color:var(--gold);font-weight:700;font-size:.78rem}
+
+  .crop-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.78rem}
+  .crop-table thead th{background:var(--bg2);color:var(--text2);font-weight:400;padding:7px 4px;text-align:center;font-size:.7rem;border-bottom:1px solid var(--border)}
+  .crop-table tbody tr{transition:background .2s}
+  .crop-table tbody tr:hover{background:rgba(92,184,64,.06)}
+  .crop-table tbody tr.pick{background:rgba(39,174,96,.1);border-left:3px solid var(--invest-color)}
+  .crop-table td{padding:6px 4px;text-align:center;border-bottom:1px solid rgba(58,92,42,.35)}
+  .crop-table td:first-child{text-align:left;font-weight:700}
+  .tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:.65rem;font-weight:700}
+  .tag-coin{background:rgba(255,215,64,.12);color:var(--coin-color)}
+  .tag-xp{background:rgba(96,192,255,.12);color:var(--xp-color)}
+  .tag-sleep{background:rgba(155,89,182,.12);color:var(--sleep-color)}
+
+  .weekend-alert{background:linear-gradient(135deg,rgba(240,192,64,.1),rgba(92,184,64,.1));border:1px solid var(--gold2);border-radius:9px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:.85rem}
+  .weekend-alert .wa-icon{font-size:1.6rem}
+  .weekend-alert strong{color:var(--gold)}
+
+  .tips{list-style:none;columns:2;column-gap:16px}
+  @media(max-width:640px){.tips{columns:1}}
+  .tips li{break-inside:avoid;padding:6px 0;font-size:.8rem;color:var(--text2);display:flex;align-items:flex-start;gap:6px}
+  .tips li::before{content:'✦';color:var(--green);font-size:.65rem;margin-top:2px;flex-shrink:0}
+
+  .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-90px);background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:7px;font-size:.85rem;z-index:999;transition:transform .4s ease;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <h1>🌾 农场智能规划器</h1>
+    <div class="subtitle">王者荣耀 S43 · 混合种植 · 投资决策 · 作息感知</div>
+    <div class="divider"></div>
+  </header>
+
+  <div class="card" style="animation-delay:0s">
+    <div class="card-title">📋 农场基础数据</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>农场 <span>等级</span></label>
+        <input type="number" id="level" value="18" min="1" max="50">
+      </div>
+      <div class="form-group">
+        <label>当前 <span>田地数</span>（已开垦）</label>
+        <input type="number" id="plots" value="9" min="1" max="25">
+        <div class="hint">上限 = floor(等级/2)</div>
+      </div>
+      <div class="form-group">
+        <label>当前 <span>经验</span></label>
+        <input type="number" id="curXp" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>升下一级需 <span>总经验</span></label>
+        <input type="number" id="xpToNext" value="500" min="1">
+      </div>
+      <div class="form-group">
+        <label>手上 <span>农场币</span></label>
+        <input type="number" id="coins" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>目标攒币 <span>数量</span>（0=不限）</label>
+        <input type="number" id="target" value="0" min="0">
+      </div>
+    </div>
+
+    <!-- 经验和农场币来源 -->
+    <div class="section exp">
+      <div class="sec-title">📈 经验与农场币来源（除种植外）</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group">
+          <label>每日对局任务 <span>经验</span></label>
+          <input type="number" id="taskXp" value="300" min="0">
+        </div>
+        <div class="form-group">
+          <label>每日对局任务 <span>农场币</span></label>
+          <input type="number" id="taskCoins" value="5000" min="0">
+        </div>
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;">
+        <div class="form-group">
+          <label>开垦新地 <span>经验/块</span></label>
+          <input type="number" id="plotXp" value="0" min="0" placeholder="游戏里查看">
+        </div>
+        <div class="form-group">
+          <label>升小摊 <span>经验/级</span></label>
+          <input type="number" id="stallXp" value="0" min="0" placeholder="游戏里查看">
+        </div>
+      </div>
+    </div>
+
+    <!-- 小摊系统 -->
+    <div class="section stall">
+      <div class="sec-title">🏪 小摊加成系统</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group">
+          <label>当前小摊 <span>等级</span></label>
+          <input type="number" id="stallLv" value="1" min="1" max="27">
+          <div class="hint" id="stallCapHint">上限：9级 | 加成：+0%</div>
+        </div>
+        <div class="form-group">
+          <label>升下一级 <span>费用</span>（0=不分析）</label>
+          <input type="number" id="stallCost" value="0" min="0" placeholder="游戏里查看">
+        </div>
+      </div>
+    </div>
+
+    <!-- 开垦成本 -->
+    <div class="section invest">
+      <div class="sec-title">🏗️ 开垦新土地</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group">
+          <label>开垦下一块 <span>费用</span>（0=不分析）</label>
+          <input type="number" id="plotCost" value="0" min="0" placeholder="游戏里查看">
+        </div>
+        <div class="form-group">
+          <label>已有 <span>最大田地数</span>（可选填）</label>
+          <input type="number" id="maxPlots" value="0" min="0" placeholder="填了会自动提示">
+        </div>
+      </div>
+    </div>
+
+    <!-- 浇水 -->
+    <div class="section water">
+      <div class="sec-title">💧 浇水设置</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group">
+          <label>每次缩短 <span>%</span></label>
+          <input type="number" id="waterPct" value="15" min="0" max="50">
+        </div>
+        <div class="form-group">
+          <label>每轮可浇 <span>次数</span></label>
+          <input type="number" id="waterTimes" value="2" min="0" max="10">
+        </div>
+      </div>
+    </div>
+
+    <!-- 作息 -->
+    <div class="section sleep">
+      <div class="sec-title">🌙 作息时间（无法浇水/收菜）</div>
+      <div class="form-grid" style="grid-template-columns:1fr auto 1fr;">
+        <div class="form-group">
+          <label>睡觉 <span>开始</span></label>
+          <input type="time" id="sleepStart" value="02:00">
+        </div>
+        <div style="display:flex;align-items:end;padding-bottom:2px;color:var(--text2)">→</div>
+        <div class="form-group">
+          <label>起床 <span>结束</span></label>
+          <input type="time" id="sleepEnd" value="09:00">
+        </div>
+      </div>
+      <div style="height:22px;border-radius:5px;overflow:hidden;margin-top:8px;border:1px solid var(--border);display:flex" id="dayBar"></div>
+      <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--text2);margin-top:2px"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    </div>
+
+    <div style="display:flex;justify-content:center;margin-top:14px">
+      <button class="btn btn-gold" onclick="calculate()">🌾 智能规划</button>
+    </div>
+  </div>
+
+  <div id="results" class="results">
+    <div id="weekendAlert" class="weekend-alert"></div>
+    <div id="stats" class="stats-row"></div>
+    <div class="card"><div class="card-title">🎯 混合种植最优方案</div><div id="mixPlan" class="mix-grid"></div></div>
+    <div class="card"><div class="card-title">🏗️ 投资决策分析</div><div id="invest"></div></div>
+    <div class="card"><div class="card-title">📋 作物收益对比</div><div style="overflow-x:auto"><table id="cropTable" class="crop-table"></table></div></div>
+    <div class="card"><div class="card-title">📅 时间线规划</div><div id="timeline" class="timeline"></div></div>
+    <div class="card"><div class="card-title">💡 每日必做</div><ul class="tips">
+      <li>打一局 <strong>1v1</strong>（约2分钟，人机无效）</li>
+      <li><strong>睡前浇水</strong>是最后操作机会</li>
+      <li>偷菜 <strong>先偷再祝福</strong></li>
+      <li>优先偷 <strong>香蕉/柚子</strong></li>
+      <li><strong>周五16点~周日24点</strong>出售双倍</li>
+      <li>升 <strong>小摊优先于农场</strong></li>
+      <li>升小摊/开地都有经验</li>
+      <li>有闲钱就投资升级</li>
+      <li>作物 <strong>满级再卖</strong></li>
+      <li>睡前列好明天的种植计划</li>
+    </ul></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ============================================================
+// 作物数据库
+// ============================================================
+const CROPS = [
+  {name:"白菜",lv:1,mat:4,type:"xp",base:300,xp:50},
+  {name:"胡萝卜",lv:2,mat:4,type:"xp",base:450,xp:70},
+  {name:"土豆",lv:4,mat:4,type:"xp",base:680,xp:100},
+  {name:"萝卜",lv:6,mat:4,type:"xp",base:950,xp:140},
+  {name:"西红柿",lv:8,mat:8,type:"xp",base:1800,xp:220},
+  {name:"茄子",lv:10,mat:8,type:"xp",base:2400,xp:300},
+  {name:"辣椒",lv:12,mat:8,type:"xp",base:3200,xp:400},
+  {name:"南瓜",lv:14,mat:16,type:"xp",base:4500,xp:550},
+  {name:"大蒜",lv:18,mat:16,type:"xp",base:6030,xp:700},
+  {name:"香蕉",lv:18,mat:16,type:"coin",base:19320,xp:1},
+  {name:"小麦",lv:19,mat:4,type:"xp",base:1200,xp:180},
+  {name:"玉米",lv:20,mat:8,type:"xp",base:4000,xp:450},
+  {name:"花生",lv:21,mat:8,type:"xp",base:5500,xp:500},
+  {name:"黄瓜",lv:22,mat:1,type:"coin",base:3500,xp:1},
+  {name:"草莓",lv:23,mat:4,type:"coin",base:2800,xp:10},
+  {name:"蓝莓",lv:25,mat:4,type:"coin",base:3800,xp:10},
+  {name:"西瓜",lv:26,mat:8,type:"coin",base:8500,xp:5},
+  {name:"芒果",lv:28,mat:8,type:"coin",base:11000,xp:5},
+  {name:"柚子",lv:30,mat:16,type:"coin",base:28000,xp:5},
+  {name:"火龙果",lv:32,mat:16,type:"coin",base:38000,xp:5},
+  {name:"葡萄",lv:34,mat:8,type:"xp",base:16000,xp:1200},
+  {name:"榴莲",lv:38,mat:16,type:"coin",base:55000,xp:5},
+  {name:"樱桃",lv:42,mat:16,type:"coin",base:75000,xp:5},
+];
+
+function fmt(n){return n.toLocaleString('zh-CN')}
+function parseT(s){const[h,m]=s.split(':').map(Number);return h+m/60}
+function pad2(h){const hh=Math.floor(h%24),mm=Math.round((h%1)*60);return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+function isSleep(h,ss,se){return ss<=se?(h>=ss&&h<se):(h>=ss||h<se)}
+function awakeMin(ss,se){return ss<=se?24*60-(se-ss)*60:(ss-se)*60}
+function stallBonus(lv){
+  if(lv<1)return 0;
+  if(lv>=11)return 50+(lv-11)*5;
+  return Math.round(lv*50/11);
+}
+function stallCap(lv){return Math.floor(lv/2)}
+
+function calcEMat(base,wp,wt,ss,se){
+  const ratio=awakeMin(ss,se)/(24*60);
+  let ew=ratio>=.9?wt:Math.max(1,Math.min(wt,Math.floor(wt*ratio)));
+  let r=base;for(let i=0;i<ew;i++)r*=(1-wp/100);
+  return{eMat:Math.round(r*100)/100,ew,mw:wt-ew,wt};
+}
+
+function genSched(base,wp,wt,ss,se,th){
+  const{eMat,ew,mw}=calcEMat(base,wp,wt,ss,se);
+  const ht=[],pt=[];
+  for(let i=0;i<24;i++){const t=(th+i*eMat)%24;ht.push(t);pt.push(((t-eMat)%24+24)%24)}
+  ht.sort((a,b)=>a-b);
+  const marked=ht.map(t=>({time:t,sleep:isSleep(t,ss,se)}));
+  const valid=marked.filter(h=>!h.sleep).length;
+  return{eMat,ew,mw,harvests:marked,plants:pt,cycles:Math.max(1,valid)};
+}
+
+function getWeekend(){
+  const now=new Date(),d=now.getDay();
+  let f=new Date(now);const df=(5-d+7)%7;
+  f.setDate(now.getDate()+(df===0&&now.getHours()>=16?7:df));f.setHours(16,0,0,0);
+  const s=new Date(f);s.setDate(f.getDate()+2);
+  return{friday:f,sunEnd:s,isWeekend:now>=f&&now<=s,daysUntil:Math.ceil((f-now)/86400000)};
+}
+
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function fmtD(d){return `${d.getMonth()+1}/${d.getDate()}`}
+
+// ============================================================
+// 主计算
+// ============================================================
+function calculate(){
+  const lv=+document.getElementById('level').value||18;
+  const plots=+document.getElementById('plots').value||9;
+  const curXp=+document.getElementById('curXp').value||0;
+  const xpToNext=+document.getElementById('xpToNext').value||500;
+  const coins=+document.getElementById('coins').value||0;
+  const target=+document.getElementById('target').value||0;
+  const taskXp=+document.getElementById('taskXp').value||300;
+  const taskCoins=+document.getElementById('taskCoins').value||5000;
+  const plotXp=+document.getElementById('plotXp').value||0;
+  const stallXp=+document.getElementById('stallXp').value||0;
+  const stallLv=+document.getElementById('stallLv').value||1;
+  const stallCost=+document.getElementById('stallCost').value||0;
+  const plotCost=+document.getElementById('plotCost').value||0;
+  const wp=parseFloat(document.getElementById('waterPct').value)||15;
+  const wt=+document.getElementById('waterTimes').value||2;
+  const ss=parseT(document.getElementById('sleepStart').value||'02:00');
+  const se=parseT(document.getElementById('sleepEnd').value||'09:00');
+
+  if(lv<1||plots<1){showToast('⚠️ 请检查输入');return}
+
+  const xpNeed=Math.max(0,xpToNext-curXp);
+  const bonus=stallBonus(stallLv);
+  const mult=1+bonus/100;
+  const sCap=stallCap(lv);
+  const maxPlots=Math.floor(lv/2);
+
+  // 处理作物
+  const avail=CROPS.filter(c=>c.lv<=lv).map(c=>{
+    const s=genSched(c.mat,wp,wt,ss,se,0);
+    const price=Math.round(c.base*mult);
+    return{...c,price,s,eMat:s.eMat,ew:s.ew,mw:s.mw,
+      hourlyCoin:price/s.eMat,hourlyXp:c.xp/s.eMat,cycles:s.cycles,sched:s,bonus};
+  });
+
+  const xpC=avail.filter(c=>c.type==='xp');
+  const coinC=avail.filter(c=>c.type==='coin');
+
+  // ============================================================
+  // 混合种植优化（贪心算法）
+  // ============================================================
+  // 目标：在满足经验需求的前提下最大化金币收益
+  // 策略：优先种最高时薪的金币作物，如果经验不足则替换部分为经验作物
+
+  const bestCoin=coinC.length?coinC.reduce((a,b)=>a.hourlyCoin>b.hourlyCoin?a:b):null;
+  const bestXp=xpC.length?xpC.reduce((a,b)=>a.hourlyXp>b.hourlyXp?a:b):null;
+
+  // 计算纯金币种植的经验
+  const pureCoinXp=bestCoin?bestCoin.xp*plots*bestCoin.cycles:0;
+  const totalDailyXpBase=taskXp+pureCoinXp;
+
+  // 如果经验不够，需要替换部分地块为经验作物
+  let mix=[];
+  let remainingPlots=plots;
+
+  if(bestCoin&&bestXp&&xpNeed>0){
+    // 估算需要多少经验作物的比例
+    const daysToLevel=totalDailyXpBase>0?xpNeed/totalDailyXpBase:999;
+    
+    if(daysToLevel>7){
+      // 时间紧张，需要混合
+      // 计算每块经验作物带来的日均经验增量 vs 金币作物
+      const coinDailyXp=bestCoin.xp*bestCoin.cycles;
+      const xpDailyXp=bestXp.xp*bestXp.cycles;
+      const xpDelta=xpDailyXp-coinDailyXp;
+      const coinDailyCoin=bestCoin.price*bestCoin.cycles;
+      const xpDailyCoin=bestXp.price*bestXp.cycles;
+      const coinDelta=coinDailyCoin-xpDailyCoin;
+
+      // 经验不足量
+      const xpGap=xpNeed-(totalDailyXpBase*7);
+      const neededPlots=xpDelta>0?Math.ceil(xpGap/xpDelta):0;
+      const xpPlots=Math.min(plots-1,neededPlots,Math.ceil(plots*0.4));
+
+      if(xpPlots>0){
+        mix.push({crop:bestXp,plots:xpPlots,dailyCoin:bestXp.price*xpPlots*bestXp.cycles,dailyXp:bestXp.xp*xpPlots*bestXp.cycles});
+        remainingPlots-=xpPlots;
+      }
+    }
+  }
+
+  // 剩余地种金币作物
+  if(bestCoin&&remainingPlots>0){
+    mix.push({crop:bestCoin,plots:remainingPlots,dailyCoin:bestCoin.price*remainingPlots*bestCoin.cycles,dailyXp:bestCoin.xp*remainingPlots*bestCoin.cycles});
+  }
+
+  // 如果没有金币作物，全种经验
+  if(!bestCoin&&bestXp){
+    mix=[{crop:bestXp,plots:plots,dailyCoin:bestXp.price*plots*bestXp.cycles,dailyXp:bestXp.xp*plots*bestXp.cycles}];
+  }
+
+  // 计算总收益
+  let totalDailyCoin=taskCoins;
+  let totalDailyXp=taskXp;
+  for(const m of mix){
+    totalDailyCoin+=m.dailyCoin;
+    totalDailyXp+=m.dailyXp;
+  }
+
+  // 时间线
+  const daysToLevel=totalDailyXp>0&&xpNeed>0?Math.ceil(xpNeed/totalDailyXp):0;
+  const remaining=Math.max(0,target-coins);
+  const daysToTarget=totalDailyCoin>0&&remaining>0?Math.ceil(remaining/(totalDailyCoin*9/7)):0;
+
+  // ============================================================
+  // 投资分析
+  // ============================================================
+  const investAnalysis=analyzeInvestment({
+    coins,lv,plots,plotCost,plotXp,stallLv,sCap,stallCost,stallXp,
+    bonus,mult,bestCoin,bestXp,taskXp,taskCoins
+  });
+
+  // ============================================================
+  // 渲染
+  // ============================================================
+  const wk=getWeekend();
+  renderWeekend(wk);
+  renderStats(totalDailyXp,totalDailyCoin,daysToLevel,daysToTarget,wk,ss,se,plots,bonus,maxPlots);
+  renderMixPlan(mix,ss,se,bonus);
+  renderInvest(investAnalysis);
+  renderTable(avail,mix,ss,se,bonus);
+  renderTimeline(lv,xpNeed,daysToLevel,coins,target,remaining,daysToTarget,wk,taskXp,plotXp,stallXp);
+
+  document.getElementById('results').classList.add('show');
+  setTimeout(()=>document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'}),80);
+  showToast('🌾 智能规划完成！');
+}
+
+function analyzeInvestment(cfg){
+  const{coins,lv,plots,plotCost,plotXp,stallLv,sCap,stallCost,stallXp,bonus,mult,bestCoin,bestXp,taskXp,taskCoins}=cfg;
+  const results=[];
+
+  // 1. 开垦新地
+  if(plotCost>0&&plots<Math.floor(lv/2)){
+    const newPlotXp=plotXp||0;
+    // 额外地块每天带来的收益（假设种最优作物）
+    const dailyExtra=bestCoin?bestCoin.price*bestCoin.cycles:0;
+    const dailyXpExtra=bestCoin?bestCoin.xp*bestCoin.cycles:0;
+    const payback=plotCost/dailyExtra;
+    const totalXp=newPlotXp+dailyXpExtra*payback;
+    results.push({
+      type:'plot',
+      name:`开垦第${plots+1}块地`,
+      cost:plotCost,
+      benefit:`+1地块，+${fmt(dailyExtra)}币/天`,
+      payback,
+      xpGain:newPlotXp,
+      score:payback<7?3:payback<14?2:1,
+      canAfford:coins>=plotCost
+    });
+  }
+
+  // 2. 升级小摊
+  if(stallCost>0&&stallLv<sCap){
+    const nextLv=stallLv+1;
+    const nextBonus=stallBonus(nextLv);
+    const bonusJump=nextBonus-bonus;
+    // 所有地块的日增收
+    const dailyExtra=bestCoin?Math.round(bestCoin.base*(nextBonus-bonus)/100*plots*bestCoin.cycles):0;
+    const payback=stallCost/(dailyExtra||1);
+    results.push({
+      type:'stall',
+      name:`小摊 Lv.${stallLv}→${nextLv}`,
+      cost:stallCost,
+      benefit:`+${bonusJump}%加成，约+${fmt(dailyExtra)}币/天`,
+      payback,
+      xpGain:stallXp,
+      score:payback<5?3:payback<10?2:1,
+      canAfford:coins>=stallCost
+    });
+  }
+
+  // 3. 攒钱建议
+  const shouldSave=results.filter(r=>!r.canAfford).length>0;
+  if(shouldSave){
+    results.push({
+      type:'save',
+      name:'优先攒钱',
+      cost:0,
+      benefit:'有钱才能投资',
+      payback:0,
+      xpGain:0,
+      score:0,
+      canAfford:true
+    });
+  }
+
+  return results.sort((a,b)=>b.score-a.score);
+}
+
+function renderWeekend(w){
+  document.getElementById('weekendAlert').innerHTML=w.isWeekend
+    ?`<span class="wa-icon">🔥</span><span><strong>周末双倍进行中</strong>！${fmtD(w.friday)} 16:00 ~ ${fmtD(w.sunEnd)} 00:00</span>`
+    :`<span class="wa-icon">⏳</span><span>距周末双倍 <strong>${w.daysUntil}</strong> 天（${fmtD(w.friday)} 16:00）</span>`;
+}
+
+function renderStats(tx,tc,dl,dt,wk,ss,se,plots,bonus,maxPlots){
+  document.getElementById('stats').innerHTML=`
+    <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">${fmt(tc)}</div><div class="stat-label">日收益（币）</div></div>
+    <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">${fmt(tx)}</div><div class="stat-label">日经验</div></div>
+    <div class="stat-card"><div class="stat-icon">🏗️</div><div class="stat-value">${plots}/${maxPlots}</div><div class="stat-label">田地</div></div>
+    <div class="stat-card"><div class="stat-icon">🏪</div><div class="stat-value">+${bonus}%</div><div class="stat-label">小摊加成</div></div>
+    <div class="stat-card"><div class="stat-icon">${dl>0?'⬆️':'✅'}</div><div class="stat-value">${dl>0?dl+'天':'-'}</div><div class="stat-label">升级</div></div>
+    <div class="stat-card"><div class="stat-icon">🎉</div><div class="stat-value">${wk.isWeekend?'🔥':wk.daysUntil+'天'}</div><div class="stat-label">双倍</div></div>`;
+}
+
+function renderMixPlan(mix,ss,se,bonus){
+  let html='';
+  for(const m of mix){
+    const c=m.crop,s=c.sched;
+    const tag=c.type==='coin'?'<span class="mc-tag coin">金币</span>':'<span class="mc-tag xp">经验</span>';
+    const sc=s.harvests.filter(h=>h.sleep).length;
+    let warn='';
+    if(sc>0)warn=`<div class="mix-detail"><span class="label">⚠️ 睡眠期收获</span><span class="value warn">${sc}次</span></div>`;
+    let water='';
+    if(c.mw>0)water=`<div class="mix-detail"><span class="label">💧 实际浇水</span><span class="value">${c.ew}/${c.wt}次</span></div>`;
+    html+=`<div class="mix-card">
+      <div class="mc-header"><span class="mc-crop">${tag} ${c.name}</span><span style="color:var(--text2);font-size:.72rem">×${m.plots}块</span></div>
+      <div class="mix-detail"><span class="label">售价（含加成）</span><span class="value coin">${fmt(c.price)} 币</span></div>
+      <div class="mix-detail"><span class="label">成熟时间</span><span class="value">${c.mat}h → ${c.eMat}h</span></div>
+      ${water}
+      <div class="mix-detail"><span class="label">日轮数</span><span class="value">${c.cycles}轮</span></div>
+      <div class="mix-detail"><span class="label">日收入</span><span class="value coin">${fmt(m.dailyCoin)} 币</span></div>
+      <div class="mix-detail"><span class="label">日经验</span><span class="value xp">${fmt(m.dailyXp)}</span></div>
+      ${warn}</div>`;
+  }
+  document.getElementById('mixPlan').innerHTML=html;
+}
+
+function renderInvest(inv){
+  let html='';
+  for(const r of inv){
+    const badge=r.score===3?'good':r.score===2?'ok':'slow';
+    const scoreText=r.score===3?'🔥超值':r.score===2?'🟢不错':r.score===1?'🟡一般':'';
+    const afford=r.canAfford?'✅ 够钱':'❌ 差'+fmt(r.cost-(+document.getElementById('coins').value||0))+'币';
+    html+=`<div class="invest-option">
+      <h5>${r.name} <span class="invest-badge ${badge}">${scoreText}</span></h5>
+      <div class="invest-detail"><span class="label">费用</span><span class="value">${r.cost>0?fmt(r.cost)+' 币':'免费'}</span></div>
+      <div class="invest-detail"><span class="label">收益</span><span class="value">${r.benefit}</span></div>
+      ${r.payback>0?`<div class="invest-detail"><span class="label">回本</span><span class="value">${r.payback.toFixed(1)} 天</span></div>`:''}
+      ${r.xpGain>0?`<div class="invest-detail"><span class="label">经验</span><span class="value xp">+${fmt(r.xpGain)}</span></div>`:''}
+      <div class="invest-detail"><span class="label">余额</span><span class="value">${afford}</span></div>
+    </div>`;
+  }
+  document.getElementById('invest').innerHTML=html;
+}
+
+function renderTable(avail,mix,ss,se,bonus){
+  const pickCrops=mix.map(m=>m.crop.name);
+  const sorted=[...avail].sort((a,b)=>{
+    if(a.type!==b.type)return a.type==='coin'?-1:1;
+    return b.hourlyCoin-a.hourlyCoin;
+  });
+  let h=`<thead><tr><th>作物</th><th>类型</th><th>等级</th><th>基础</th><th>实际</th><th>浇水</th><th>售价</th><th>时薪</th><th>日轮</th><th>影响</th></tr></thead><tbody>`;
+  for(const c of sorted){
+    const pick=pickCrops.includes(c.name);
+    const tag=c.type==='coin'?'<span class="tag tag-coin">金币</span>':'<span class="tag tag-xp">经验</span>';
+    const sc=c.sched.harvests.filter(h=>h.sleep).length;
+    let si='';
+    if(c.mw>0||sc>0){const p=[];if(c.mw>0)p.push(`💤丢${c.mw}水`);if(sc>0)p.push(`${sc}次睡`);si=`<span class="tag tag-sleep">${p.join(' ')}</span>`}
+    else si='<span style="color:var(--green);font-size:.72rem">✅</span>';
+    h+=`<tr class="${pick?'pick':''}">
+      <td>${pick?'⭐ ':''}${c.name}</td><td>${tag}</td><td>${c.lv}</td>
+      <td>${c.mat}h</td><td>${c.eMat}h</td><td>${c.ew}/${c.wt}</td>
+      <td style="color:var(--coin-color);font-weight:700">${fmt(c.price)}</td>
+      <td style="color:var(--stall-color);font-weight:700">${fmt(Math.round(c.hourlyCoin))}</td>
+      <td>${c.cycles}</td><td>${si}</td></tr>`;
+  }
+  h+='</tbody>';
+  document.getElementById('cropTable').innerHTML=h;
+}
+
+function renderTimeline(lv,xn,dl,coins,tgt,rem,dt,wk,tx,px,sx){
+  let h='';
+  if(xn>0){
+    const d=new Date();d.setDate(d.getDate()+dl);
+    h+=`<div class="timeline-item"><span class="tl-icon">📈</span><div class="tl-content">升 Lv.${lv+1}：还需 ${fmt(xn)} 经验，约 <strong>${dl}天</strong>（${fmtD(d)}）</div></div>`;
+  }
+  if(tgt>0&&rem>0){
+    const d=new Date();d.setDate(d.getDate()+dt);
+    h+=`<div class="timeline-item"><span class="tl-icon">💰</span><div class="tl-content">攒够 ${fmt(tgt)} 币：还需 ${fmt(rem)}，约 <strong>${dt}天</strong>（${fmtD(d)}）</div></div>`;
+  }
+  h+=`<div class="timeline-item"><span class="tl-icon">🎉</span><div class="tl-content"><strong>周末双倍</strong>：${fmtD(wk.friday)} 16:00 ~ ${fmtD(wk.sunEnd)} 00:00<br><span class="tl-time">${wk.isWeekend?'🔥 进行中！':`⏳ ${wk.daysUntil}天后`}</span></div></div>`;
+  if(px>0)h+=`<div class="timeline-item"><span class="tl-icon">🏗️</span><div class="tl-content">开垦新地可获得 <strong>+${fmt(px)} 经验</strong>/块</div></div>`;
+  if(sx>0)h+=`<div class="timeline-item"><span class="tl-icon">🏪</span><div class="tl-content">升级小摊可获得 <strong>+${fmt(sx)} 经验</strong>/级</div></div>`;
+  document.getElementById('timeline').innerHTML=h;
+}
+
+// ============================================================
+// 事件绑定
+// ============================================================
+['level','plots','stallLv'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('input',()=>{
+    const lv=+document.getElementById('level').value||18;
+    const max=Math.floor(lv/2);
+    const plotsEl=document.getElementById('plots');
+    if(plotsEl&&+plotsEl.value>max)plotsEl.value=max;
+    const stallEl=document.getElementById('stallLv');
+    const sCap=stallCap(lv);
+    if(stallEl&&+stallEl.value>sCap)stallEl.value=sCap;
+    document.getElementById('stallCapHint').textContent=`上限：${sCap}级 | 加成：+${stallBonus(stallEl?+stallEl.value:1)}%`;
+    renderDayBar();
+  });
+});
+
+['sleepStart','sleepEnd'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('change',renderDayBar);
+});
+
+function renderDayBar(){
+  const ss=parseT(document.getElementById('sleepStart')?.value||'02:00');
+  const se=parseT(document.getElementById('sleepEnd')?.value||'09:00');
+  const bar=document.getElementById('dayBar');
+  if(!bar)return;
+  let h='';
+  if(ss<=se){
+    const p1=(ss/24*100).toFixed(1),w1=((se-ss)/24*100).toFixed(1);
+    h=`<div style="width:${p1}%;background:var(--green2)"></div><div style="width:${w1}%;background:rgba(155,89,182,.45)"></div><div style="width:${(100-parseFloat(p1)-parseFloat(w1)).toFixed(1)}%;background:var(--green2)"></div>`;
+  }else{
+    const p1=(se/24*100).toFixed(1);
+    h=`<div style="width:${p1}%;background:rgba(155,89,182,.45)"></div><div style="width:${(100-parseFloat(p1)).toFixed(1)}%;background:var(--green2)"></div>`;
+  }
+  bar.innerHTML=h;
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  renderDayBar();
+  calculate();
+});
+</script>
+</body>
+</html>
